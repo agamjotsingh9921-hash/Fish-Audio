@@ -1,8 +1,8 @@
 # Wrath of Olympus
 
-A third-person Greek-myth hack-and-slash that runs in the browser, built from scratch in the style of *God of War*. You play a Spartan with chained fire blades and fight through five waves in a ruined temple. The last wave is a boss fight against Polyphemos, the Cyclops King.
+An open-world, third-person Greek-myth action game that runs in the browser, built from scratch in the style of *God of War*. You play a Spartan with fire blades on chains. Your son Atreus fights beside you with his bow. Together you break three strongholds of the dead to open the Temple of Polyphemos, the Cyclops King.
 
-This is an original fan-made game. Every model, texture and sound is generated in code. It uses no assets, characters or names from Sony's games.
+This is an original fan-made game. Every model, texture, sky and sound is generated in code. It uses no assets from Sony's games. (Atreus is a figure from Greek myth, so he fits the setting.)
 
 ## Play
 
@@ -15,40 +15,57 @@ npx http-server -p 8080 .
 # open http://localhost:8080
 ```
 
-You need a browser with WebGL (any current Chrome, Edge, Firefox or Safari). It works on phones too, with on-screen controls.
+You need a browser with WebGL 2 (any current Chrome, Edge, Firefox or Safari). On older laptops or phones, switch **Graphics** to *low* in the pause menu.
 
 ## Controls
 
 | Action | Keyboard / mouse | Touch |
 | --- | --- | --- |
-| Move | `W A S D` | Left stick |
-| Camera | Mouse (click to lock), `← → ↑ ↓` | Drag the right side of the screen |
+| Move / sprint | `W A S D` / hold `Shift` | Left stick / push it all the way |
+| Camera | Mouse (click to lock), arrow keys | Drag the right side of the screen |
 | Light attack (4-hit combo) | Left click / `J` | Attack |
 | Heavy spin attack | Right click / `K` | Heavy |
-| Jump / double jump | `Space` | Jump |
-| Air slam | Light attack while in the air | Attack in the air |
-| Dodge roll (brief invulnerability) | `Shift` / `L` | Dodge |
-| Olympian Wrath (area blast, costs 50 magic) | `F` | Wrath |
-| Rage of Sparta (when the rage bar is full) | `Q` | Rage |
-| Execute a weakened enemy | `E` | Finish |
+| Jump, double jump, air slam | `Space`, then attack in the air | Jump |
+| Dodge roll | Tap `Shift` / `L` | Dodge |
+| Atreus: lightning volley | `R` | Volley |
+| Olympian Wrath (costs 50 magic) | `F` | Wrath |
+| Rage of Sparta (rage bar full) | `Q` | Rage |
+| Execute, open a chest, pray at an altar | `E` | Use |
+| World map | `N` / `Tab` | Map |
 | Pause / mute | `Esc` or `P` / `M` | Pause |
 
-## Features
+## The world
 
-- **Chain-blade combat.** The blades fly out on chains along real attack arcs, and hits are checked along the chain. Includes a 4-hit combo ending in a ground slam, a multi-hit spin, air slams, hitstop, screen shake and fire trails.
-- **Executions.** Enemies glow with a ring when they drop below about 20% health. Press `E` to finish them off for extra orbs and some health back.
-- **Rage of Sparta.** Fills as you deal and take damage. While active you deal 60% more damage, attack faster, take half damage and heal on every hit.
-- **Olympian Wrath.** Lightning plus a shockwave ring that knocks back everything nearby.
-- **Enemies with their own AI:**
-  - Undead legionnaires: shield, sword and telegraphed lunges.
-  - Harpies: circle overhead, screech, then dive at you.
-  - Minotaurs: paw the ground, then charge. They get stunned if they hit a pillar, so lure them into one.
-  - **Polyphemos the Cyclops:** club slams, sweeps, stomp shockwaves (jump over them), thrown boulders, two enrage phases that summon reinforcements, and a cinematic finisher.
-- **Red, green and blue orbs** for currency, health and magic. Spend red orbs between waves at the Altar of Hephaestus on blade damage, max health, max magic and rage upgrades.
-- **Synthesised audio:** war drums, a drone, and sound effects all made with WebAudio.
+- **An 800 m landscape:** rolling hills, cypress and olive groves, pine-covered mountains, a lake, dirt roads, and ruins and fallen statues scattered across the land.
+- **Three strongholds,** each marked by a beam of light:
+  - **Legion Camp:** a palisade fort with undead legionnaires and hellhounds.
+  - **Harpy Cliffs:** a mesa of nests where harpies dive from the sky.
+  - **Labyrinth Ruins:** broken walls patrolled by minotaurs. Lure them into charging a wall to stun them.
+- **Temple of Polyphemos:** sealed by fire until all three strongholds fall. Inside is the boss fight, with two enraged phases and a finishing scene.
+- **Altars of Hephaestus** (at the shrine and the crossroads): spend red orbs on upgrades, restore your health, and set your respawn point.
+- **13 chests:** red orbs, plus Gorgon Eyes (more health) and Phoenix Feathers (more magic). Each stronghold also guards a reward chest.
+- **Roaming packs** of legionnaires and hellhounds keep the roads dangerous.
+- **Dying** returns you to the last altar you prayed at. Strongholds you cleared stay cleared.
+- **After the boss** you can keep exploring in free roam.
+
+## Atreus
+
+He follows you, keeps his distance in a fight, and shoots whatever you're fighting (he's especially good against harpies). He rolls away from enemies that get close. Press **R** for a three-arrow lightning volley that stuns. The *Atreus's Bow* upgrade makes him shoot faster and harder. He also comments on the fight and the journey.
+
+## Graphics and blood
+
+- HDR rendering with bloom, ACES tone mapping and colour grading.
+- A procedural sky with sun and drifting clouds, which also lights every surface.
+- Soft shadows that follow you, and terrain with grass, rock, dirt and sand blended by slope and height.
+- Wind-swept grass, swaying trees, and reflective water.
+- Smooth character models.
+- **Blood:** sprays from every hit that fall and stain the ground, pools under the dead, heavy splatter on executions, blades that darken with blood, wounded enemies that redden, and screen blood when you're hurt. Turn it off under **Blood** in the pause menu.
 
 ## Files
 
 - `index.html`: page layout, HUD, menus and styles
-- `game.js`: the whole game (rendering, combat, AI, audio, UI)
+- `js/core.js`: renderer and post-processing, sky and lighting, audio, particles and blood
+- `js/world.js`: terrain, water, vegetation, strongholds, temple, chests, altars, map
+- `js/actors.js`: character models for the Spartan, Atreus and the enemies
+- `js/game.js`: combat, Atreus's AI, enemy AI, quests, HUD, camera and the main loop
 - `vendor/three.min.js`: Three.js r128
