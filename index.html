@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- ARTIFACT:START -->
+<title>Wrath of Olympus</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Alegreya+Sans:wght@400;500;700&display=swap">
+<style>
+  /* Layout: a full-bleed WebGL arena. The HUD hugs the top-left like a shield rim;
+     menus are stone tablets centred over a darkened battlefield. */
+  :root {
+    --obsidian: #0d0806;
+    --stone: #1d1410;
+    --bone: #ecdfc6;
+    --ash: #a99780;
+    --blood: #b0161c;
+    --ember: #ff7a1c;
+    --bronze: #bb8e4a;
+    --life: #53b04b;
+    --aether: #3f8fd6;
+    --display: 'Cinzel', 'Trajan Pro', Georgia, 'Times New Roman', serif;
+    --body: 'Alegreya Sans', 'Gill Sans', 'Segoe UI', system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; background: var(--obsidian); color: var(--bone); overflow: hidden; font-family: var(--body); }
+  #game { position: fixed; inset: 0; }
+  #game canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+  /* ---------- overlays ---------- */
+  #vignette, #rageTint { position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 5; }
+  #vignette { background: radial-gradient(ellipse at center, transparent 45%, rgba(176, 22, 28, .75) 100%); }
+  #rageTint { background: radial-gradient(ellipse at center, transparent 35%, rgba(255, 90, 20, .35) 100%); mix-blend-mode: screen; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; font-family: var(--display); }
+  .vitals {
+    position: absolute; display: flex; align-items: center; gap: 12px;
+    top: calc(14px + env(safe-area-inset-top, 0px)); left: calc(16px + env(safe-area-inset-left, 0px));
+  }
+  .medallion {
+    width: 64px; height: 64px; border-radius: 50%; display: grid; place-content: center; text-align: center;
+    background: radial-gradient(circle at 40% 35%, #3a1a10, #120806 70%);
+    border: 2px solid var(--bronze); box-shadow: 0 0 0 3px rgba(0,0,0,.5), inset 0 0 12px rgba(255, 60, 20, .35);
+  }
+  .medallion span { font-size: 1.05rem; font-weight: 700; color: #ff6a4a; font-variant-numeric: tabular-nums; line-height: 1; }
+  .medallion small { font-family: var(--body); font-size: .55rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ash); margin-top: 2px; }
+  .bars { display: grid; gap: 5px; }
+  .bar { position: relative; height: 10px; background: rgba(0, 0, 0, .6); border: 1px solid var(--bronze); clip-path: polygon(0 0, 100% 0, calc(100% - 7px) 100%, 0 100%); }
+  .bar i { display: block; height: 100%; width: 100%; transition: width .12s linear; }
+  .bar.hp { width: min(260px, 52vw); height: 14px; }
+  .bar.hp i { background: linear-gradient(#7ad66f, var(--life) 55%, #2d6e29); }
+  .bar.mp { width: min(210px, 42vw); }
+  .bar.mp i { background: linear-gradient(#8cc4f2, var(--aether) 55%, #1f4f80); }
+  .bar.rage { width: min(210px, 42vw); }
+  .bar.rage i { background: linear-gradient(#ffb36b, var(--ember) 50%, #a02a0a); }
+  .bar.rage.ready { box-shadow: 0 0 12px var(--ember); animation: pulse .8s ease-in-out infinite alternate; }
+  #rageReady { position: absolute; right: 12px; top: -1px; font-size: .55rem; letter-spacing: .16em; color: #fff3e0; text-shadow: 0 0 4px #000; display: none; }
+  .bar.rage.ready #rageReady { display: block; }
+  @keyframes pulse { from { filter: brightness(1); } to { filter: brightness(1.5); } }
+
+  .wave {
+    position: absolute; text-align: right; font-size: .8rem; letter-spacing: .2em; text-transform: uppercase; color: var(--ash);
+    top: calc(16px + env(safe-area-inset-top, 0px)); right: calc(16px + env(safe-area-inset-right, 0px));
+  }
+  .wave b { display: block; font-size: 1.05rem; color: var(--bone); letter-spacing: .08em; }
+  .combo {
+    position: absolute; right: calc(24px + env(safe-area-inset-right, 0px)); top: 34%; text-align: right; opacity: 0;
+    transition: opacity .2s; text-shadow: 0 2px 10px rgba(0,0,0,.8);
+  }
+  .combo b { display: block; font-size: 3.2rem; font-weight: 900; color: var(--bone); line-height: 1; font-variant-numeric: tabular-nums; }
+  .combo span { font-size: .8rem; letter-spacing: .3em; text-transform: uppercase; color: var(--ember); }
+  .boss { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(26px + env(safe-area-inset-bottom, 0px)); width: min(620px, 82vw); text-align: center; }
+  .boss-name { font-size: .95rem; letter-spacing: .3em; text-transform: uppercase; margin-bottom: 6px; text-shadow: 0 0 8px #000; }
+  .boss .bar { width: 100%; height: 12px; }
+  .boss .bar i { background: linear-gradient(#ff6a5a, var(--blood) 55%, #5a0a0c); }
+  .prompt {
+    position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    padding: 8px 18px; border: 1px solid var(--bronze); background: rgba(13, 8, 6, .75); font-size: .85rem; letter-spacing: .2em; text-transform: uppercase;
+  }
+  .prompt kbd { font-family: var(--display); color: var(--ember); font-weight: 900; margin-right: 8px; }
+  .banner {
+    position: absolute; left: 0; right: 0; top: 24%; text-align: center; opacity: 0; transition: opacity .5s;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    text-shadow: 0 0 18px rgba(0,0,0,.9), 0 0 4px #000;
+  }
+  .banner small { display: block; font-family: var(--body); font-size: .85rem; letter-spacing: .4em; text-transform: uppercase; color: var(--ember); }
+  .banner strong { display: block; font-size: clamp(1.8rem, 6vw, 3.4rem); font-weight: 900; letter-spacing: .06em; text-wrap: balance; }
+  .banner.show { opacity: 1; }
+
+  /* ---------- screens ---------- */
+  .screen {
+    position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; overflow-y: auto;
+    padding-block: 28px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    background: radial-gradient(ellipse at 50% 40%, rgba(13, 8, 6, .35), rgba(13, 8, 6, .92) 75%);
+  }
+  .tablet { width: 100%; max-width: 660px; display: grid; gap: 22px; margin-block: auto; }
+  .eyebrow { font-size: .78rem; letter-spacing: .36em; text-transform: uppercase; color: var(--ember); margin: 0; }
+  .title-lockup { display: grid; grid-template-columns: 10px 1fr; gap: 18px; align-items: stretch; }
+  .tattoo { background: linear-gradient(var(--blood), #6d0b10); border-radius: 2px; box-shadow: 0 0 18px rgba(176, 22, 28, .6); }
+  h1 { font-family: var(--display); font-weight: 900; margin: 0; line-height: .9; text-wrap: balance; }
+  h1 .big { display: block; font-size: clamp(3.2rem, 13vw, 6.4rem); letter-spacing: .05em; text-shadow: 0 0 30px rgba(255, 110, 30, .35); }
+  h1 .small { display: block; font-size: clamp(1.2rem, 4.6vw, 2rem); font-weight: 500; letter-spacing: .32em; color: var(--ash); margin-top: 8px; }
+  h2 { font-family: var(--display); font-weight: 900; font-size: clamp(2rem, 7vw, 3rem); margin: 0; letter-spacing: .05em; text-wrap: balance; }
+  .lede { font-size: 1.08rem; line-height: 1.55; max-width: 60ch; margin: 0; color: #d7c8ae; }
+  .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px 22px; margin: 0; padding: 14px 16px; border-top: 1px solid rgba(187, 142, 74, .45); border-bottom: 1px solid rgba(187, 142, 74, .45); }
+  .controls div { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; font-size: .95rem; min-width: 0; }
+  .controls dt { color: var(--ash); }
+  .controls dd { margin: 0; text-align: right; }
+  kbd.k { font-family: var(--display); font-size: .78rem; font-weight: 700; padding: 2px 7px; border: 1px solid var(--bronze); border-bottom-width: 2px; border-radius: 3px; background: #1a110c; color: var(--bone); white-space: nowrap; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .btn {
+    font-family: var(--display); font-weight: 700; font-size: .95rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--bone); background: linear-gradient(#c21c22, #7a0d12); border: 1px solid var(--bronze); padding: 14px 28px; cursor: pointer;
+    clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  }
+  .btn.ghost { background: transparent; color: var(--ash); }
+  .btn:hover { filter: brightness(1.15); }
+  .btn:focus-visible { outline: 2px solid var(--ember); outline-offset: 3px; }
+  .btn:disabled { filter: grayscale(1) brightness(.6); cursor: not-allowed; }
+  .note { font-size: .85rem; color: var(--ash); margin: 0; }
+  .touch-only { display: none; }
+  @media (pointer: coarse) { .touch-only { display: block; } .mouse-only { display: none; } }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+  .stats div { border: 1px solid rgba(187, 142, 74, .4); padding: 12px; }
+  .stats b { display: block; font-family: var(--display); font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+  .stats span { font-size: .72rem; letter-spacing: .2em; text-transform: uppercase; color: var(--ash); }
+
+  .shop-head { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; }
+  .shop-orbs { font-family: var(--display); font-size: 1.3rem; color: #ff6a4a; font-variant-numeric: tabular-nums; }
+  .upgrades { display: grid; gap: 10px; }
+  .upg { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; align-items: center; padding: 12px 14px; border: 1px solid rgba(187, 142, 74, .4); background: rgba(29, 20, 16, .7); }
+  .upg h3 { font-family: var(--display); font-size: 1.02rem; margin: 0; letter-spacing: .06em; }
+  .upg p { margin: 0; color: var(--ash); font-size: .9rem; grid-column: 1; }
+  .upg .pips { letter-spacing: .25em; color: var(--ember); font-size: .8rem; }
+  .upg .btn { grid-column: 2; grid-row: 1 / span 3; padding: 10px 16px; font-size: .78rem; }
+
+  /* ---------- touch controls ---------- */
+  #touch { position: fixed; inset: 0; z-index: 12; pointer-events: none; }
+  #stick { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 2px solid rgba(236, 223, 198, .35); background: rgba(13, 8, 6, .3);
+    left: calc(26px + env(safe-area-inset-left, 0px)); bottom: calc(30px + env(safe-area-inset-bottom, 0px)); pointer-events: auto; touch-action: none; }
+  #knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: rgba(236, 223, 198, .45); }
+  .tbtns { position: absolute; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(3, 64px); gap: 10px; pointer-events: none; }
+  .tbtns button { pointer-events: auto; touch-action: none; width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--bronze); background: rgba(13, 8, 6, .55); color: var(--bone); font-family: var(--display); font-size: .62rem; font-weight: 700; letter-spacing: .08em; }
+  .tbtns button.main { grid-column: 2 / span 2; width: 100%; border-radius: 32px; background: rgba(176, 22, 28, .6); font-size: .8rem; }
+  #tPause { position: absolute; top: calc(90px + env(safe-area-inset-top, 0px)); left: calc(16px + env(safe-area-inset-left, 0px)); pointer-events: auto; padding: 6px 12px; border: 1px solid var(--bronze); background: rgba(13,8,6,.6); color: var(--bone); font-family: var(--display); font-size: .7rem; letter-spacing: .15em; }
+
+  @media (max-width: 640px) {
+    .wave { top: calc(96px + env(safe-area-inset-top, 0px)); font-size: .65rem; }
+    .wave b { font-size: .85rem; }
+    .combo b { font-size: 2.4rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { .bar.rage.ready { animation: none; } .banner, .combo { transition: none; } }
+</style>
+
+<div id="game" aria-label="Game view"></div>
+<div id="vignette"></div>
+<div id="rageTint"></div>
+
+<div id="hud" hidden>
+  <div class="vitals">
+    <div class="medallion"><span id="orbs">0</span><small>orbs</small></div>
+    <div class="bars">
+      <div class="bar hp" title="Health"><i id="hpFill"></i></div>
+      <div class="bar mp" title="Magic"><i id="mpFill"></i></div>
+      <div class="bar rage" id="rageBar" title="Rage"><i id="rageFill"></i><b id="rageReady">Rage ready · Q</b></div>
+    </div>
+  </div>
+  <div class="wave" id="waveLabel"></div>
+  <div class="combo" id="combo"><b id="comboN">0</b><span>hits</span></div>
+  <div class="boss" id="bossBar" hidden><div class="boss-name">Polyphemos, the Cyclops King</div><div class="bar"><i id="bossFill"></i></div></div>
+  <div class="prompt" id="prompt" hidden></div>
+  <div class="banner" id="banner"><small id="bannerSub"></small><strong id="bannerMain"></strong></div>
+</div>
+
+<div id="touch" hidden>
+  <div id="stick"><div id="knob"></div></div>
+  <button id="tPause" type="button">Pause</button>
+  <div class="tbtns">
+    <button type="button" data-act="magic">Wrath</button>
+    <button type="button" data-act="rage">Rage</button>
+    <button type="button" data-act="finish">Finish</button>
+    <button type="button" data-act="jump">Jump</button>
+    <button type="button" data-act="heavy">Heavy</button>
+    <button type="button" data-act="dodge">Dodge</button>
+    <button type="button" data-act="light" class="main">Attack</button>
+  </div>
+</div>
+
+<section id="title" class="screen">
+  <div class="tablet">
+    <p class="eyebrow">A Spartan's trial in the ruins of Olympus</p>
+    <div class="title-lockup">
+      <div class="tattoo" aria-hidden="true"></div>
+      <h1><span class="big">WRATH</span><span class="small">of Olympus</span></h1>
+    </div>
+    <p class="lede">The gods have abandoned the temple and sent the dead to hold it. Take up the Blades of Ash, chained to your forearms, and carve through five waves of Tartarus to reach the Cyclops King.</p>
+    <dl class="controls mouse-only">
+      <div><dt>Move</dt><dd><kbd class="k">W A S D</kbd></dd></div>
+      <div><dt>Camera</dt><dd><kbd class="k">Mouse</kbd> <kbd class="k">← →</kbd></dd></div>
+      <div><dt>Light attack</dt><dd><kbd class="k">Left click</kbd> <kbd class="k">J</kbd></dd></div>
+      <div><dt>Heavy spin</dt><dd><kbd class="k">Right click</kbd> <kbd class="k">K</kbd></dd></div>
+      <div><dt>Jump / slam</dt><dd><kbd class="k">Space</kbd></dd></div>
+      <div><dt>Dodge roll</dt><dd><kbd class="k">Shift</kbd></dd></div>
+      <div><dt>Olympian Wrath</dt><dd><kbd class="k">F</kbd></dd></div>
+      <div><dt>Rage of Sparta</dt><dd><kbd class="k">Q</kbd></dd></div>
+      <div><dt>Execute</dt><dd><kbd class="k">E</kbd></dd></div>
+      <div><dt>Pause · Mute</dt><dd><kbd class="k">Esc</kbd> <kbd class="k">M</kbd></dd></div>
+    </dl>
+    <p class="note touch-only">Left stick moves. Drag the right side of the screen to turn the camera.</p>
+    <div class="row">
+      <button class="btn" id="startBtn" type="button">Begin the trial</button>
+      <p class="note mouse-only">Clicking the arena locks the mouse to the camera.</p>
+    </div>
+  </div>
+</section>
+
+<section id="pause" class="screen" hidden>
+  <div class="tablet">
+    <p class="eyebrow">The battle waits</p>
+    <h2>Paused</h2>
+    <div class="row">
+      <button class="btn" id="resumeBtn" type="button">Resume</button>
+      <button class="btn ghost" id="restartBtn" type="button">Restart</button>
+      <button class="btn ghost" id="muteBtn" type="button">Sound: on</button>
+    </div>
+  </div>
+</section>
+
+<section id="shop" class="screen" hidden>
+  <div class="tablet">
+    <div class="shop-head">
+      <div>
+        <p class="eyebrow">Altar of Hephaestus</p>
+        <h2 id="shopTitle">Wave cleared</h2>
+      </div>
+      <div class="shop-orbs"><span id="shopOrbs">0</span> red orbs</div>
+    </div>
+    <p class="lede">Health and magic are restored. Offer red orbs to the forge before the next wave.</p>
+    <div class="upgrades" id="upgrades"></div>
+    <div class="row"><button class="btn" id="nextBtn" type="button">Face the next wave</button></div>
+  </div>
+</section>
+
+<section id="over" class="screen" hidden>
+  <div class="tablet">
+    <p class="eyebrow" id="overEyebrow">The Fates cut your thread</p>
+    <h2 id="overTitle">You have fallen</h2>
+    <p class="lede" id="overText"></p>
+    <div class="stats">
+      <div><b id="stKills">0</b><span>Slain</span></div>
+      <div><b id="stCombo">0</b><span>Best combo</span></div>
+      <div><b id="stWave">0</b><span>Wave reached</span></div>
+      <div><b id="stTime">0:00</b><span>Time</span></div>
+    </div>
+    <div class="row"><button class="btn" id="againBtn" type="button">Rise again</button></div>
+  </div>
+</section>
+
+<script src="vendor/three.min.js"></script>
+<script src="game.js"></script>
+<!-- ARTIFACT:END -->
+</body>
+</html>
