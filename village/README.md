@@ -6,7 +6,9 @@ You play Nadia Vos, searching the snowbound village of Varkova and the castle ab
 
 ## Play
 
-Open `village/index.html` through any static server, or on the GitHub Pages site under `/village/`. It shares Three.js with the other game in `../vendor/`.
+**[▶ Play Ashes of Varkova in your browser](https://agamjotsingh9921-hash.github.io/Fish-Audio/village/)** (no install, no account).
+
+To run it yourself, open `village/index.html` through any static server, or on the GitHub Pages site under `/village/`. It shares Three.js with the other game in `../vendor/`.
 
 ```bash
 npx http-server -p 8080 .

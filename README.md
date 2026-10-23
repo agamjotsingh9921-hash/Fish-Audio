@@ -1,6 +1,17 @@
-# Wrath of Olympus
+# Two browser games
 
-> This repo now holds two browser games: **Wrath of Olympus** (below, `index.html`) and the survival-horror **[Ashes of Varkova](village/README.md)** (`village/index.html`).
+Click a link to play in your browser. There's nothing to install and no account needed.
+
+| Game | Play |
+| --- | --- |
+| **Wrath of Olympus**: open-world Greek-myth action in the style of *God of War* | **[▶ Play Wrath of Olympus](https://agamjotsingh9921-hash.github.io/Fish-Audio/)** |
+| **Ashes of Varkova**: first-person survival horror in a snowbound village and castle | **[▶ Play Ashes of Varkova](https://agamjotsingh9921-hash.github.io/Fish-Audio/village/)** |
+
+Ashes of Varkova has its own page: [village/README.md](village/README.md).
+
+---
+
+# Wrath of Olympus
 
 An open-world, third-person Greek-myth action game that runs in the browser, built from scratch in the style of *God of War*. You play a Spartan with fire blades on chains. Your son Atreus fights beside you with his bow. Together you break three strongholds of the dead to open the Temple of Polyphemos, the Cyclops King.
 
