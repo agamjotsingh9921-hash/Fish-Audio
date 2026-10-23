@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- ARTIFACT:START -->
+<title>Ashes of Varkova</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=Libre+Franklin:wght@400;500;600&display=swap">
+<style>
+  /* Layout: a full-screen first-person view. The HUD stays at the edges and out of
+     the way; menus are dark cards laid over the frozen scene like papers on a desk. */
+  :root {
+    --night: #07080b;
+    --soot: #121317;
+    --bone: #dcd4c4;
+    --ash: #8e877b;
+    --blood: #8a1014;
+    --candle: #d9a456;
+    --frost: #9fb3c8;
+    --display: 'IM Fell English SC', 'Iowan Old Style', Georgia, serif;
+    --print: 'IM Fell English', 'Iowan Old Style', Georgia, serif;
+    --ui: 'Libre Franklin', 'Segoe UI', system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; background: var(--night); color: var(--bone); overflow: hidden; font-family: var(--ui); }
+  #game { position: fixed; inset: 0; }
+  #game canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #bloodScreen { position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 5; background-size: 100% 100%; }
+  #fade { position: fixed; inset: 0; background: #000; pointer-events: none; z-index: 30; opacity: 0; }
+  #letterbox::before, #letterbox::after { content: ''; position: fixed; left: 0; right: 0; height: 0; background: #000; z-index: 9; transition: height .6s ease; }
+  #letterbox::before { top: 0; } #letterbox::after { bottom: 0; }
+  #letterbox.on::before, #letterbox.on::after { height: 11vh; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+  .cross { --s: 10px; position: absolute; left: 50%; top: 50%; width: 0; height: 0; transition: opacity .2s; }
+  .cross i { position: absolute; background: rgba(220, 212, 196, .85); box-shadow: 0 0 2px #000; }
+  .cross .dot { width: 2px; height: 2px; left: -1px; top: -1px; border-radius: 50%; }
+  .cross .t, .cross .b { width: 2px; height: 7px; left: -1px; }
+  .cross .t { top: calc(-7px - var(--s)); } .cross .b { top: var(--s); }
+  .cross .l, .cross .r { height: 2px; width: 7px; top: -1px; }
+  .cross .l { left: calc(-7px - var(--s)); } .cross .r { left: var(--s); }
+  .hitmark { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px; opacity: 0; transition: opacity .08s; }
+  .hitmark::before, .hitmark::after { content: ''; position: absolute; left: 10px; top: 0; width: 2px; height: 22px; background: var(--bone); transform: rotate(45deg); }
+  .hitmark::after { transform: rotate(-45deg); }
+  .hitmark.head::before, .hitmark.head::after { background: #ff4a3a; }
+  .ammo { position: absolute; right: calc(28px + env(safe-area-inset-right, 0px)); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); text-align: right; text-shadow: 0 1px 6px rgba(0,0,0,.9); }
+  .ammo .n { font-family: var(--ui); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .ammo .n b { font-size: 2.4rem; font-weight: 600; }
+  .ammo .n span { font-size: 1.05rem; color: var(--ash); margin-left: 6px; }
+  .ammo .n span::before { content: '/ '; }
+  .ammo .n span:empty { display: none; }
+  .ammo small { display: block; font-size: .72rem; letter-spacing: .2em; text-transform: uppercase; color: var(--ash); }
+  .ammo.empty .n b { color: #ff5a4a; }
+  .vital { --f: 100; position: absolute; left: calc(26px + env(safe-area-inset-left, 0px)); bottom: calc(22px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 10px; opacity: 0; transition: opacity .6s; }
+  .vital.show { opacity: 1; }
+  .vital .ring { width: 46px; height: 46px; border-radius: 50%; background: conic-gradient(var(--c) calc(var(--f) * 1%), rgba(255,255,255,.08) 0); -webkit-mask: radial-gradient(circle, transparent 15px, #000 16px); mask: radial-gradient(circle, transparent 15px, #000 16px); }
+  .vital span { font-size: .78rem; letter-spacing: .22em; text-transform: uppercase; color: var(--c); text-shadow: 0 1px 4px #000; }
+  .vital.fine { --c: #7fb87a; } .vital.caution { --c: #e0b24a; } .vital.danger { --c: #e8483a; }
+  .stamina { position: absolute; left: 50%; top: calc(50% + 34px); width: 80px; height: 3px; margin-left: -40px; background: rgba(255,255,255,.12); opacity: 0; transition: opacity .3s; }
+  .stamina.show { opacity: .8; }
+  .stamina i { display: block; height: 100%; background: var(--frost); }
+  .prompt { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(18vh + env(safe-area-inset-bottom, 0px)); font-size: .9rem; color: var(--bone); text-shadow: 0 1px 6px #000; white-space: nowrap; }
+  .prompt kbd { display: inline-block; min-width: 1.4em; padding: 1px 6px; margin-right: 10px; border: 1px solid rgba(220,212,196,.6); border-radius: 3px; font-family: var(--ui); font-size: .78rem; font-weight: 600; text-align: center; }
+  .subtitle { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(11vh + 18px + env(safe-area-inset-bottom, 0px)); max-width: min(720px, 88vw); text-align: center; font-size: 1.08rem; line-height: 1.45; text-shadow: 0 1px 8px #000, 0 0 2px #000; opacity: 0; transition: opacity .3s; text-wrap: balance; }
+  .subtitle b { color: var(--candle); font-weight: 600; margin-right: 8px; }
+  .subtitle.show { opacity: 1; }
+  .toast { position: absolute; left: 50%; top: calc(16vh + env(safe-area-inset-top, 0px)); transform: translateX(-50%); padding: 6px 16px; background: rgba(7, 8, 11, .7); border-left: 2px solid var(--candle); font-size: .9rem; opacity: 0; transition: opacity .3s; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }
+  .toast.show { opacity: 1; }
+  .objective { position: absolute; left: calc(26px + env(safe-area-inset-left, 0px)); top: calc(22px + env(safe-area-inset-top, 0px)); max-width: min(380px, 70vw); font-family: var(--print); font-size: 1.05rem; line-height: 1.35; text-shadow: 0 1px 6px #000; opacity: 0; transition: opacity .8s; }
+  .objective small { display: block; font-family: var(--ui); font-size: .66rem; letter-spacing: .3em; text-transform: uppercase; color: var(--candle); margin-bottom: 2px; }
+  .objective.show { opacity: 1; }
+  .boss { position: absolute; left: 50%; transform: translateX(-50%); top: calc(26px + env(safe-area-inset-top, 0px)); width: min(560px, 76vw); text-align: center; }
+  .boss div { font-family: var(--display); font-size: 1.2rem; letter-spacing: .08em; margin-bottom: 6px; text-shadow: 0 1px 6px #000; }
+  .boss .bar { height: 6px; background: rgba(255,255,255,.1); }
+  .boss .bar i { display: block; height: 100%; background: linear-gradient(90deg, #5a080a, var(--blood) 40%, #c4241c); transition: width .15s; }
+  .siege { position: absolute; left: 50%; top: calc(18px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); font-family: var(--display); font-size: 2.6rem; color: var(--bone); text-shadow: 0 0 12px rgba(138, 16, 20, .9); font-variant-numeric: tabular-nums; }
+
+  /* ---------- screens ---------- */
+  .screen { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; overflow-y: auto;
+    padding-block: 28px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    background: radial-gradient(ellipse at 50% 40%, rgba(7, 8, 11, .55), rgba(7, 8, 11, .94) 75%); }
+  .card { width: 100%; max-width: 640px; margin-block: auto; display: grid; gap: 18px; }
+  .eyebrow { margin: 0; font-size: .72rem; letter-spacing: .36em; text-transform: uppercase; color: var(--candle); }
+  h1 { margin: 0; font-family: var(--display); font-weight: 400; line-height: .95; text-wrap: balance; }
+  h1 .a { display: block; font-size: clamp(1.1rem, 3.6vw, 1.6rem); letter-spacing: .5em; color: var(--ash); }
+  h1 .b { display: block; font-size: clamp(3.4rem, 13vw, 7rem); letter-spacing: .02em; text-shadow: 0 0 40px rgba(138, 16, 20, .45); }
+  h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(2rem, 7vw, 3rem); text-wrap: balance; }
+  h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.35rem; }
+  .lede { margin: 0; font-family: var(--print); font-size: 1.18rem; line-height: 1.5; color: #c9c1b1; max-width: 60ch; }
+  .muted { color: var(--ash); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .btn { font-family: var(--ui); font-size: .82rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--bone); background: #2a0c0d; border: 1px solid #6a2a24; padding: 12px 22px; cursor: pointer; }
+  .btn:hover { background: #3a1012; }
+  .btn.ghost { background: rgba(255,255,255,.03); border-color: rgba(220,212,196,.22); color: #c9c1b1; }
+  .btn.ghost:hover { background: rgba(255,255,255,.07); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn:focus-visible, button:focus-visible { outline: 2px solid var(--candle); outline-offset: 2px; }
+  .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 6px 22px; margin: 0; padding: 14px 0; border-top: 1px solid rgba(220,212,196,.14); border-bottom: 1px solid rgba(220,212,196,.14); font-size: .88rem; }
+  .controls div { display: flex; justify-content: space-between; gap: 10px; min-width: 0; }
+  .controls dt { color: var(--ash); } .controls dd { margin: 0; text-align: right; }
+  kbd.k { font-family: var(--ui); font-size: .74rem; font-weight: 600; padding: 1px 6px; border: 1px solid rgba(220,212,196,.35); border-radius: 3px; white-space: nowrap; }
+  .warn { font-size: .78rem; color: var(--ash); margin: 0; }
+  .touch-only { display: none; }
+  @media (pointer: coarse) { .touch-only { display: block; } .mouse-only { display: none; } }
+
+  /* inventory: the attaché case */
+  .inv { width: 100%; max-width: 1040px; margin-block: auto; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 26px; align-items: start; }
+  .inv-head { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; }
+  .cond { font-family: var(--display); font-size: 1.5rem; }
+  .cond.fine { color: #7fb87a; } .cond.caution { color: #e0b24a; } .cond.danger { color: #e8483a; }
+  .marks { font-variant-numeric: tabular-nums; color: var(--candle); }
+  .case { padding: 14px; background: linear-gradient(#1c1612, #120e0b); border: 2px solid #3a2a1c; border-radius: 6px; box-shadow: inset 0 0 0 2px #0a0806, 0 10px 30px rgba(0,0,0,.6); }
+  #caseGrid { --cols: 6; --rows: 4; --cell: min(66px, calc((100vw - 64px) / var(--cols))); display: grid; grid-template-columns: repeat(var(--cols), var(--cell)); grid-template-rows: repeat(var(--rows), var(--cell)); gap: 3px; position: relative; }
+  .cell { grid-row: auto; background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.05); }
+  .item { position: relative; z-index: 1; margin: 0; padding: 0; background: rgba(30, 24, 20, .9); border: 1px solid rgba(217, 164, 86, .35); cursor: pointer; display: grid; place-items: center; }
+  .item img { width: 88%; height: 88%; object-fit: contain; pointer-events: none; }
+  .item span { position: absolute; right: 4px; bottom: 2px; font-size: .78rem; font-weight: 600; font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px #000; }
+  .item.sel { border-color: var(--candle); box-shadow: 0 0 0 1px var(--candle), 0 0 14px rgba(217, 164, 86, .4); }
+  .side { display: grid; gap: 18px; min-width: 0; }
+  .panel h4 { margin: 0 0 8px; font-size: .68rem; letter-spacing: .3em; text-transform: uppercase; color: var(--candle); font-weight: 600; }
+  #itemDetail { min-height: 110px; }
+  #itemDetail p { margin: 6px 0; line-height: 1.45; color: #c9c1b1; }
+  #itemDetail .val { color: var(--candle); font-size: .88rem; }
+  .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .list li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 10px; background: rgba(255,255,255,.03); font-size: .9rem; min-width: 0; }
+  .list li span { color: var(--ash); text-align: right; font-size: .82rem; }
+  #weaponList li { cursor: pointer; }
+  #weaponList li.on { box-shadow: inset 2px 0 0 var(--candle); }
+  #keyList li { flex-direction: column; gap: 2px; } #keyList li span { text-align: left; }
+  #fileList button { all: unset; cursor: pointer; font-family: var(--print); font-size: 1rem; }
+  #fileList button:hover { color: var(--candle); }
+  @media (max-width: 760px) { .inv { grid-template-columns: 1fr; } }
+
+  /* merchant */
+  .tabs { display: flex; gap: 4px; }
+  .tabs button { flex: 1; font-family: var(--ui); font-size: .78rem; letter-spacing: .2em; text-transform: uppercase; padding: 10px; background: rgba(255,255,255,.03); color: var(--ash); border: 1px solid rgba(220,212,196,.12); cursor: pointer; }
+  .tabs button.on { color: var(--bone); border-color: var(--candle); }
+  #shopList li { align-items: center; }
+  #shopList li > span { color: var(--bone); text-align: left; font-size: .95rem; }
+  #shopList small { color: var(--candle); letter-spacing: .2em; margin-left: 6px; }
+  #shopList .btn { padding: 8px 14px; font-variant-numeric: tabular-nums; min-width: 92px; }
+
+  /* the note reader */
+  .paper { width: 100%; max-width: 560px; margin-block: auto; padding: 34px 38px; background: linear-gradient(#d9cfb6, #c9bc9c); color: #2a2018; box-shadow: 0 20px 50px rgba(0,0,0,.7); transform: rotate(-.6deg); }
+  .paper h3 { color: #3a1810; margin-bottom: 14px; font-size: 1.6rem; }
+  .paper pre { margin: 0; white-space: pre-wrap; font-family: var(--print); font-size: 1.15rem; line-height: 1.55; }
+  .paper .row { margin-top: 22px; }
+  .paper .btn.ghost { color: #2a2018; border-color: rgba(42,32,24,.4); }
+  #mapCanvas { width: min(720px, 100%); height: auto; aspect-ratio: 1; max-width: 100%; background: #0d0a08; border: 1px solid rgba(220,212,196,.15); image-rendering: pixelated; }
+  .dead h2 { font-size: clamp(3rem, 12vw, 6rem); color: #a01418; letter-spacing: .06em; text-shadow: 0 0 30px rgba(160, 20, 24, .6); }
+
+  /* touch */
+  #touch { position: fixed; inset: 0; z-index: 12; pointer-events: none; }
+  #stick { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 2px solid rgba(220,212,196,.25); background: rgba(7,8,11,.25); left: calc(24px + env(safe-area-inset-left, 0px)); bottom: calc(28px + env(safe-area-inset-bottom, 0px)); pointer-events: auto; touch-action: none; }
+  #knob { position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%; background: rgba(220,212,196,.35); }
+  .tb { position: absolute; right: calc(14px + env(safe-area-inset-right, 0px)); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(3, 58px); gap: 8px; }
+  .tb button, .ts button { pointer-events: auto; touch-action: none; border: 1px solid rgba(220,212,196,.3); background: rgba(7,8,11,.45); color: var(--bone); font-family: var(--ui); font-size: .62rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+  .tb button { width: 58px; height: 58px; border-radius: 50%; }
+  .tb .fire { grid-column: 2 / span 2; width: 100%; border-radius: 29px; background: rgba(138,16,20,.55); font-size: .78rem; }
+  .ts { position: absolute; left: calc(14px + env(safe-area-inset-left, 0px)); top: calc(80px + env(safe-area-inset-top, 0px)); display: flex; gap: 6px; }
+  .ts button { padding: 7px 10px; }
+  @media (prefers-reduced-motion: reduce) { #letterbox::before, #letterbox::after, .objective, .subtitle, .toast { transition: none; } }
+</style>
+
+<div id="game" aria-label="Game view"></div>
+<div id="bloodScreen"></div>
+<div id="letterbox"></div>
+
+<div id="hud" hidden>
+  <div class="cross" id="cross"><i class="dot"></i><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i></div>
+  <div class="hitmark" id="hitmark"></div>
+  <div class="stamina" id="stamina"><i id="staminaFill"></i></div>
+  <div class="objective" id="objective"></div>
+  <div class="boss" id="boss" hidden><div id="bossName"></div><div class="bar"><i id="bossFill"></i></div></div>
+  <div class="siege" id="siegeTimer" hidden></div>
+  <div class="toast" id="toast"></div>
+  <div class="subtitle" id="subtitle"></div>
+  <div class="prompt" id="prompt" hidden></div>
+  <div class="vital" id="vital"><div class="ring" id="vitalRing"></div><span id="vitalLabel">Fine</span></div>
+  <div class="ammo" id="ammo"><div class="n"><b id="ammoMag">—</b><span id="ammoRes"></span></div><small id="ammoName">Knife</small></div>
+</div>
+
+<div id="touch" hidden>
+  <div id="stick"><div id="knob"></div></div>
+  <div class="ts">
+    <button type="button" data-act="pause">Pause</button>
+    <button type="button" data-act="bag">Case</button>
+    <button type="button" data-act="map">Map</button>
+    <button type="button" data-act="light">Light</button>
+  </div>
+  <div class="tb">
+    <button type="button" data-act="aim">Aim</button>
+    <button type="button" data-act="reload">Reload</button>
+    <button type="button" data-act="use">Use</button>
+    <button type="button" data-act="swap">Swap</button>
+    <button type="button" data-act="fire" class="fire">Fire</button>
+    <button type="button" data-act="heal">Heal</button>
+  </div>
+</div>
+
+<section id="title" class="screen">
+  <div class="card">
+    <p class="eyebrow">A survival horror in the Carpathian snow</p>
+    <h1><span class="a">Ashes of</span><span class="b">Varkova</span></h1>
+    <p class="lede">Your sister Ilse took a post at the castle above Varkova and stopped writing. The road into the valley ended in a ditch. Find her. Keep your flashlight on and count your bullets.</p>
+    <div class="row">
+      <button class="btn" id="newBtn" type="button">New game</button>
+      <button class="btn ghost" id="continueBtn" type="button" hidden>Continue</button>
+    </div>
+    <dl class="controls mouse-only">
+      <div><dt>Move · sprint</dt><dd><kbd class="k">W A S D</kbd> <kbd class="k">Shift</kbd></dd></div>
+      <div><dt>Look</dt><dd><kbd class="k">Mouse</kbd></dd></div>
+      <div><dt>Shoot · aim</dt><dd><kbd class="k">Left</kbd> <kbd class="k">Right</kbd></dd></div>
+      <div><dt>Reload</dt><dd><kbd class="k">R</kbd></dd></div>
+      <div><dt>Knife · pistol · shotgun</dt><dd><kbd class="k">1</kbd> <kbd class="k">2</kbd> <kbd class="k">3</kbd></dd></div>
+      <div><dt>Interact</dt><dd><kbd class="k">E</kbd></dd></div>
+      <div><dt>Flashlight</dt><dd><kbd class="k">F</kbd></dd></div>
+      <div><dt>Heal</dt><dd><kbd class="k">Q</kbd></dd></div>
+      <div><dt>Case · map</dt><dd><kbd class="k">Tab</kbd> <kbd class="k">M</kbd></dd></div>
+      <div><dt>Pause</dt><dd><kbd class="k">Esc</kbd></dd></div>
+    </dl>
+    <p class="touch-only warn">Left stick moves; push it all the way to sprint. Drag the right side of the screen to look.</p>
+    <p class="warn">Contains blood, gore and sudden loud sounds. Blood can be turned off in the pause menu. Best with headphones.</p>
+  </div>
+</section>
+
+<section id="pause" class="screen" hidden>
+  <div class="card">
+    <p class="eyebrow">Paused</p>
+    <h2>Catch your breath</h2>
+    <p class="lede" id="pauseObjective"></p>
+    <div class="row">
+      <button class="btn" id="resumeBtn" type="button">Resume</button>
+      <button class="btn ghost" id="loadBtn" type="button">Load last save</button>
+      <button class="btn ghost" id="titleBtn" type="button">Quit to title</button>
+    </div>
+    <div class="row">
+      <button class="btn ghost" id="qualityBtn" type="button">Graphics: high</button>
+      <button class="btn ghost" id="bloodBtn" type="button">Blood: on</button>
+      <button class="btn ghost" id="sensBtn" type="button">Mouse: normal</button>
+      <button class="btn ghost" id="muteBtn" type="button">Sound: on</button>
+    </div>
+  </div>
+</section>
+
+<section id="inventory" class="screen" hidden>
+  <div class="inv">
+    <div class="inv-head">
+      <div><p class="eyebrow">Condition</p><div class="cond fine" id="invCondition">Fine</div></div>
+      <div class="lede" id="invObjective" style="font-size:1rem; max-width:46ch"></div>
+      <div><p class="eyebrow">Marks</p><div class="marks" id="invMarks">0</div></div>
+    </div>
+    <div class="case"><div id="caseGrid"></div></div>
+    <div class="side">
+      <div class="panel" id="itemDetail"></div>
+      <div class="panel"><h4>Weapons</h4><ul class="list" id="weaponList"></ul></div>
+      <div class="panel"><h4>Key items</h4><ul class="list" id="keyList"></ul></div>
+      <div class="panel"><h4>Documents</h4><ul class="list" id="fileList"></ul></div>
+      <div class="row"><button class="btn ghost" type="button" data-close>Close · Tab</button></div>
+    </div>
+  </div>
+</section>
+
+<section id="merchant" class="screen" hidden>
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div><p class="eyebrow">Brask's cart</p><h2>Wares</h2></div>
+      <div><p class="eyebrow">Your marks</p><div class="marks" id="shopMarks" style="font-size:1.5rem">0</div></div>
+    </div>
+    <div class="tabs"><button type="button" data-tab="buy" class="on">Buy</button><button type="button" data-tab="sell">Sell</button><button type="button" data-tab="upgrade">Upgrade</button></div>
+    <ul class="list" id="shopList"></ul>
+    <div class="row"><button class="btn ghost" type="button" data-close>Leave</button></div>
+  </div>
+</section>
+
+<section id="note" class="screen" hidden>
+  <div class="paper">
+    <h3 id="noteTitle"></h3>
+    <pre id="noteText"></pre>
+    <div class="row"><button class="btn ghost" type="button" data-close>Put it away</button></div>
+  </div>
+</section>
+
+<section id="map" class="screen" hidden>
+  <div class="card" style="max-width:760px">
+    <div class="row" style="justify-content:space-between"><h2 id="mapTitle">Varkova</h2><button class="btn ghost" type="button" data-close>Close · M</button></div>
+    <canvas id="mapCanvas" width="720" height="720" aria-label="Map"></canvas>
+    <p class="lede" id="mapObjective" style="font-size:1rem"></p>
+    <p class="warn">Blue marks a ledger. Gold marks a door. Green rooms are safe: nothing will follow you inside.</p>
+  </div>
+</section>
+
+<section id="saveDlg" class="screen" hidden>
+  <div class="card" style="max-width:460px">
+    <p class="eyebrow">The ledger</p>
+    <h2>Record your progress?</h2>
+    <p class="lede" id="saveMsg"></p>
+    <div class="row"><button class="btn" id="saveYes" type="button">Save</button><button class="btn ghost" type="button" data-close>Cancel</button></div>
+  </div>
+</section>
+
+<section id="dead" class="screen dead" hidden>
+  <div class="card" style="text-align:center; justify-items:center">
+    <h2>You died</h2>
+    <div class="row" style="justify-content:center">
+      <button class="btn" id="deadContinue" type="button">Continue</button>
+      <button class="btn ghost" id="deadTitle" type="button">Quit to title</button>
+    </div>
+  </div>
+</section>
+
+<section id="end" class="screen" hidden>
+  <div class="card">
+    <p class="eyebrow">Chapter one complete</p>
+    <h2>The roof falls silent</h2>
+    <p class="lede">Velmira is dead. Ilse is still somewhere beneath the castle, in the crypts where the water runs. Her story is not over.</p>
+    <p class="warn" id="endStats"></p>
+    <div class="row"><button class="btn" id="endTitle" type="button">Return to title</button></div>
+  </div>
+</section>
+
+<div id="fade"></div>
+
+<script src="../vendor/three.min.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/level.js"></script>
+<script src="js/monsters.js"></script>
+<script src="js/game.js"></script>
+<!-- ARTIFACT:END -->
+</body>
+</html>

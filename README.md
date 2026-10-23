@@ -1,5 +1,7 @@
 # Wrath of Olympus
 
+> This repo now holds two browser games: **Wrath of Olympus** (below, `index.html`) and the survival-horror **[Ashes of Varkova](village/README.md)** (`village/index.html`).
+
 An open-world, third-person Greek-myth action game that runs in the browser, built from scratch in the style of *God of War*. You play a Spartan with fire blades on chains. Your son Atreus fights beside you with his bow. Together you break three strongholds of the dead to open the Temple of Polyphemos, the Cyclops King.
 
 This is an original fan-made game. Every model, texture, sky and sound is generated in code. It uses no assets from Sony's games. (Atreus is a figure from Greek myth, so he fits the setting.)
